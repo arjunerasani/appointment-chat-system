@@ -6,4 +6,7 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface AppointmentTokenRepository extends JpaRepository<AppointmentToken, Long> {
+    AppointmentToken findByToken(String token);
+
+    void deleteByAppointmentId(long appointmentId);
 }

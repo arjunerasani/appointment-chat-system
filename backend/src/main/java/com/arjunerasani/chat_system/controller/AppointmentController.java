@@ -4,6 +4,7 @@ import com.arjunerasani.chat_system.entity.Appointment;
 import com.arjunerasani.chat_system.entity.Status;
 import com.arjunerasani.chat_system.repository.AppointmentRepository;
 import com.arjunerasani.chat_system.repository.StaffRepository;
+import com.arjunerasani.chat_system.service.EmailNotificationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,6 +19,9 @@ import java.util.Random;
 public class AppointmentController {
     @Autowired
     private AppointmentRepository appointmentRepository;
+
+    @Autowired
+    private EmailNotificationService emailNotificationService;
 
     @PostMapping("/request")
     public ResponseEntity<?> requestAppointment(@RequestBody Map<String, String> requestData){
@@ -45,10 +49,13 @@ public class AppointmentController {
             // save it
             Appointment savedAppointment = appointmentRepository.save(appointment);
 
+            emailNotificationService.notifyEligibleStaff(savedAppointment);
+
             return ResponseEntity.ok(Map.of("message", "Appointment successfully queued!",
                     "appointmentNumber", savedAppointment.getAppointmentNumber(),
                     "id",  savedAppointment.getId()));
         } catch (Exception ex) {
+            ex.printStackTrace();
             return ResponseEntity.status(500).body(Map.of("error", "Server processing error"));
         }
     }
