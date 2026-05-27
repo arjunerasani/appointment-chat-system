@@ -26,8 +26,10 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", "/appointment/**", "/chat/**", "/error").permitAll()
-                .anyRequest().authenticated())
+                        .requestMatchers("/api/staff/**").permitAll()
+                        .requestMatchers("/appointment/**").permitAll()
+                        .requestMatchers("/ws-connect/**").permitAll()
+                        .anyRequest().authenticated())
                 .oauth2Login(oauth2 -> oauth2
                         .successHandler(OAuth2SuccessHandler));
 

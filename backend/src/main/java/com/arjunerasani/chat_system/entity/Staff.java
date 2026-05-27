@@ -20,7 +20,7 @@ public class Staff {
     // enumerated because i want jpa to save enums as strings
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
-    private Status status;
+    private StaffStatus status;
 
     @Column(name = "last_seen_at", nullable = false)
     private LocalDateTime lastSeenAt;
@@ -49,11 +49,11 @@ public class Staff {
         this.email = email;
     }
 
-    public Status getStatus() {
+    public StaffStatus getStatus() {
         return status;
     }
 
-    public void setStatus(Status status) {
+    public void setStatus(StaffStatus status) {
         this.status = status;
     }
 

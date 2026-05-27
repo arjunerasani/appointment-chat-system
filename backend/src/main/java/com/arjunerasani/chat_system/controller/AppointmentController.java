@@ -6,12 +6,14 @@ import com.arjunerasani.chat_system.repository.AppointmentRepository;
 import com.arjunerasani.chat_system.repository.StaffRepository;
 import com.arjunerasani.chat_system.service.EmailNotificationService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.Random;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/appointment")
@@ -31,8 +33,8 @@ public class AppointmentController {
             String reason = requestData.get("reason");
 
             // validation check
-            if (username == null || email == null || reason == null) {
-                return ResponseEntity.badRequest().body(Map.of("error", "All fields are required"));
+            if (username == null || username.trim().isEmpty() || reason == null || reason.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Name and Reason are required."));
             }
 
             Appointment appointment = new Appointment();
@@ -41,6 +43,9 @@ public class AppointmentController {
             appointment.setReason(reason);
             appointment.setStatus(Status.WAITING);
             appointment.setRequestedAt(LocalDateTime.now());
+
+            appointment.setUserSecureToken(UUID.randomUUID().toString());
+            appointment.setStaffSecureToken(UUID.randomUUID().toString());
 
             // this should generate a random 6 digit reference number for the user
             long referenceNum = 100000L + new Random().nextInt(900000);
@@ -53,11 +58,45 @@ public class AppointmentController {
 
             return ResponseEntity.ok(Map.of("message", "Appointment successfully queued!",
                     "appointmentNumber", savedAppointment.getAppointmentNumber(),
-                    "id",  savedAppointment.getId()));
+                    "id",  savedAppointment.getId(), "userToken", savedAppointment.getUserSecureToken()));
         } catch (Exception ex) {
             ex.printStackTrace();
-            return ResponseEntity.status(500).body(Map.of("error", "Server processing error"));
+            return ResponseEntity.status(500).body(Map.of("error", "Failed to generate appointment."));
         }
+    }
+
+    @GetMapping("/status/{token}")
+    public ResponseEntity<?> getAppointmentStatus(@PathVariable String token){
+        Appointment appointment = appointmentRepository.findByUserSecureToken(token);
+
+        if (appointment == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Invalid routing key."));
+        }
+
+        // this is for metrics and queue number for the user
+        long position = 0;
+
+        if (appointment.getStatus() == Status.WAITING) {
+            position = appointmentRepository.countByStatusAndRequestedAtBefore(Status.WAITING, appointment.getRequestedAt()) + 1;
+        }
+
+        return ResponseEntity.ok(Map.of("status", appointment.getStatus(), "appointmentNumber", appointment.getAppointmentNumber(),
+                "username", appointment.getUsername(), "reason", appointment.getReason(), "position", position));
+    }
+
+    @PutMapping("/cancel/{token}")
+    public ResponseEntity<?> cancelAppointment(@PathVariable String token){
+        Appointment appointment = appointmentRepository.findByUserSecureToken(token);
+
+        if (appointment == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Ticket has already been assigned to staff."));
+        }
+
+        appointment.setStatus(Status.CANCELLED);
+        appointment.setCancelledAt(LocalDateTime.now());
+        appointmentRepository.save(appointment);
+
+        return  ResponseEntity.ok(Map.of("success", "Appointment has been cancelled."));
     }
 
     @GetMapping("/pending")

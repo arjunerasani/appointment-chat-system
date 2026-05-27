@@ -1,9 +1,6 @@
 package com.arjunerasani.chat_system.service;
 
-import com.arjunerasani.chat_system.entity.Appointment;
-import com.arjunerasani.chat_system.entity.AppointmentToken;
-import com.arjunerasani.chat_system.entity.Staff;
-import com.arjunerasani.chat_system.entity.TokenType;
+import com.arjunerasani.chat_system.entity.*;
 import com.arjunerasani.chat_system.repository.AppointmentTokenRepository;
 import com.arjunerasani.chat_system.repository.StaffRepository;
 import org.springframework.beans.factory.annotation.Value;
@@ -36,9 +33,17 @@ public class EmailNotificationService {
 
     @Transactional
     public void notifyEligibleStaff(Appointment appointment) {
-        List<Staff> eligibleStaff = staffRepository.findAll();
+        List<Staff> availableStaff = staffRepository.findByStatus(StaffStatus.ONLINE_AVAILABLE);
 
-        for (Staff staff : eligibleStaff) {
+        // don't send email if people are online
+        if (!availableStaff.isEmpty()) {
+            return;
+        }
+
+        // no one online/available then notify all staff so they can log in
+        List<Staff> allStaff = staffRepository.findAll();
+
+        for (Staff staff : allStaff) {
             String secureToken = generateSecureToken(appointment, TokenType.STAFF_CLAIM);
             String actionUrl = frontendBaseUrl + "/chat/staff/" + secureToken;
 

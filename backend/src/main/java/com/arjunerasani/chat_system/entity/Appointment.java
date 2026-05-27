@@ -17,7 +17,7 @@ public class Appointment {
     @Column(name = "username", nullable = false)
     private String username;
 
-    @Column(name = "email", nullable = false)
+    @Column(name = "email")
     private String email;
 
     @Column(name = "reason", nullable = false)
@@ -30,6 +30,13 @@ public class Appointment {
 
     @Column(name = "assigned_staff_id")
     private Long assignedStaffId;
+
+    // this is a secure token for client/staff access strings
+    @Column(name = "user_secure_token", nullable = false, unique = true)
+    private String userSecureToken;
+
+    @Column(name = "staff_secure_token", nullable = false, unique = true)
+    private String staffSecureToken;
 
     @Column(name = "requested_at", nullable = false)
     private LocalDateTime requestedAt;
@@ -97,6 +104,22 @@ public class Appointment {
 
     public void setAssignedStaffId(Long assignedStaffId) {
         this.assignedStaffId = assignedStaffId;
+    }
+
+    public String getUserSecureToken() {
+        return userSecureToken;
+    }
+
+    public void setUserSecureToken(String userSecureToken) {
+        this.userSecureToken = userSecureToken;
+    }
+
+    public String getStaffSecureToken() {
+        return staffSecureToken;
+    }
+
+    public void setStaffSecureToken(String staffSecureToken) {
+        this.staffSecureToken = staffSecureToken;
     }
 
     public LocalDateTime getRequestedAt() {

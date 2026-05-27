@@ -1,6 +1,7 @@
 package com.arjunerasani.chat_system.config;
 
 import com.arjunerasani.chat_system.entity.Staff;
+import com.arjunerasani.chat_system.entity.StaffStatus;
 import com.arjunerasani.chat_system.entity.Status;
 import com.arjunerasani.chat_system.repository.StaffRepository;
 import com.arjunerasani.chat_system.service.JWTService;
@@ -38,10 +39,10 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
             staff = new Staff();
             staff.setEmail(email);
             staff.setName(name);
-            staff.setStatus(Status.ACTIVE);
         }
 
         // update last seen
+        staff.setStatus(StaffStatus.ONLINE_AVAILABLE);
         staff.setLastSeenAt(LocalDateTime.now());
         staffRepository.save(staff);
 
