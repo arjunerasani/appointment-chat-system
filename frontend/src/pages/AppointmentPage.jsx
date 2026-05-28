@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CalendarCheck, ArrowLeft, CheckCircle, Loader2, AlertCircle, MessageSquare, XCircle } from 'lucide-react';
+import ChatWindow from './ChatWindow';
 
 export default function AppointmentPage() {
     const [formData, setFormData] = useState({ username: '', email: '', reason: '' });
@@ -102,13 +103,14 @@ export default function AppointmentPage() {
                         </button>
                     </div>
 
-                    <div style={{ height: '400px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#a0aec0' }}>
-                        <div style={{ textAlign: 'center' }}>
-                            <MessageSquare size={40} style={{ marginBottom: '12px', color: '#cbd5e0' }} />
-                            <p style={{ margin: 0, fontWeight: '500' }}>WebSocket Room Core Operational Window</p>
-                            <span style={{ fontSize: '0.85rem' }}>Channel Target: /topic/appointment/{userToken}</span>
-                        </div>
-                    </div>
+                    {/* take out the placeholder and use the chat window */}
+                    {liveTicket.appointmentId && (
+                    <ChatWindow
+                        appointmentId={liveTicket.appointmentId}
+                        senderType="USER"
+                        senderId={liveTicket.userId || 0}
+                        senderName={liveTicket.username}
+                    />)}
                 </div>
             </div>
         );

@@ -81,7 +81,8 @@ public class AppointmentController {
         }
 
         return ResponseEntity.ok(Map.of("status", appointment.getStatus(), "appointmentNumber", appointment.getAppointmentNumber(),
-                "username", appointment.getUsername(), "reason", appointment.getReason(), "position", position));
+                "username", appointment.getUsername(), "reason", appointment.getReason(), "position", position,
+                "appointmentId", appointment.getId()));
     }
 
     @PutMapping("/cancel/{token}")

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { LogOut, Shield, Activity, MessageSquare, AlertCircle } from 'lucide-react';
+import ChatWindow from './ChatWindow';
 
 export default function StaffDashboard() {
     const [searchParams] = useSearchParams();
@@ -153,12 +154,13 @@ export default function StaffDashboard() {
                             </div>
 
                             {/* active chat */}
-                            <div style={{ height: '400px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#a0aec0' }}>
-                                <div style={{ textAlign: 'center' }}>
-                                    <MessageSquare size={36} style={{ marginBottom: '8px', color: '#cbd5e0' }} />
-                                    <p style={{ margin: 0 }}>WebSocket Connection Initialization Window</p>
-                                </div>
-                            </div>
+                            {activeAssignment && activeAssignment.id && (
+                            <ChatWindow
+                                appointmentId={activeAssignment.id}
+                                senderType="STAFF"
+                                senderId={activeAssignment.assignedStaffId}
+                                senderName="Support Staff"
+                            />)}
                         </div>
                     </div>
                 ) : (
