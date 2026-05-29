@@ -111,4 +111,24 @@ public class AppointmentController {
             return ResponseEntity.status(500).body(Map.of("error", "Failed to retrieve queue data"));
         }
     }
+
+    @PutMapping("/update-email/{token}")
+    public ResponseEntity<?> updateEmail(@PathVariable String token, @RequestBody Map<String, String> body){
+        Appointment appointment = appointmentRepository.findByUserSecureToken(token);
+
+        if (appointment == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Appointment not found"));
+        }
+
+        String email = body.get("email");
+
+        if (email == null || email.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Email is required"));
+        }
+
+        appointment.setEmail(email);
+        appointmentRepository.save(appointment);
+
+        return ResponseEntity.ok(Map.of("message", "Email saved"));
+    }
 }

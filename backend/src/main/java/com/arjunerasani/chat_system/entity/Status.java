@@ -5,6 +5,7 @@ public enum Status {
     ASSIGNED,
     ACTIVE,
     WAITING_FOR_USER_RETURN,
+    WAITING_FOR_STAFF,
     COMPLETED,
     CANCELLED,
     EXPIRED

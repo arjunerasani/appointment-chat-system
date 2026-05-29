@@ -3,7 +3,7 @@ import {Client} from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import {Send} from 'lucide-react';
 
-export default function ChatWindow({ appointmentId, senderType, senderId, senderName }) {
+export default function ChatWindow({ appointmentId, senderType, senderId, senderName, authToken}) {
     const [messages, setMessages] = useState([]);
     const [inputText, setInputText] = useState('');
     const [connected, setConnected] = useState(false);
@@ -32,6 +32,7 @@ export default function ChatWindow({ appointmentId, senderType, senderId, sender
     useEffect(() => {
         const client = new Client({
             webSocketFactory: () => new SockJS('http://localhost:8080/ws'),
+            connectHeaders: authToken ? { Authorization: `Bearer ${authToken}` } : {},
             onConnect: () => {
                 setConnected(true);
                 // subscribe to this appointment's topic

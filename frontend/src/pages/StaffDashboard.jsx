@@ -17,6 +17,7 @@ export default function StaffDashboard() {
 
         if (tokenFromUrl) {
             localStorage.setItem('staff_token', tokenFromUrl);
+
             navigate('/staff-dashboard', { replace: true });
             return;
         }
@@ -39,7 +40,7 @@ export default function StaffDashboard() {
                 if (response.ok) {
                     const data = await response.json();
                     // data contains activeAssignment object if allocated, plus global waiting counts
-                    setActiveAssignment(data.activeAssignment || null);
+                    setActiveAssignment(data.activeAssignment?.id ? data.activeAssignment : null);
                     setStaffStatus(data.staffStatus || 'ONLINE_AVAILABLE');
                     setSystemMetrics({ waitingCount: data.waitingCount || 0});
                     setError('');
@@ -64,9 +65,24 @@ export default function StaffDashboard() {
         return () => clearInterval(interval);
     }, [searchParams, navigate]);
 
-    const handleLogout = () => {
-        localStorage.removeItem('staff_token');
-        navigate('/');
+    const handleLogout = async() => {
+        const savedToken = localStorage.getItem('staff_token');
+
+        try {
+            await fetch('http://localhost:8080/api/staff/logout', {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${savedToken}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+        } catch (err) {
+            console.error('Logout notification failed:', err);
+        } finally {
+            // always clear and redirect even if the request fails
+            localStorage.removeItem('staff_token');
+            navigate('/');
+        }
     };
 
     const handleCompleteAppointment = async () => {
@@ -160,6 +176,7 @@ export default function StaffDashboard() {
                                 senderType="STAFF"
                                 senderId={activeAssignment.assignedStaffId}
                                 senderName="Support Staff"
+                                authToken={localStorage.getItem('staff_token')}
                             />)}
                         </div>
                     </div>

@@ -4,6 +4,7 @@ import com.arjunerasani.chat_system.entity.AppointmentToken;
 import com.arjunerasani.chat_system.repository.AppointmentTokenRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -19,6 +20,7 @@ public class TokenVerificationController {
         this.appointmentTokenRepository = appointmentTokenRepository;
     }
 
+    @Transactional
     @GetMapping("/verify/{token}")
     public ResponseEntity<?> verifySecureLink(@PathVariable String token) {
         AppointmentToken appointmentToken = appointmentTokenRepository.findByToken(token);

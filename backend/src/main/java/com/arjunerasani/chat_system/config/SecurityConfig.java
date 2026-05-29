@@ -30,6 +30,7 @@ public class SecurityConfig {
                         .requestMatchers("/appointment/**").permitAll()
                         .requestMatchers("/ws/**").permitAll()
                         .requestMatchers("/api/chat/history/**").permitAll()
+                        .requestMatchers("/api/auth/tokens/**").permitAll()
                         .anyRequest().authenticated())
                 .oauth2Login(oauth2 -> oauth2
                         .successHandler(OAuth2SuccessHandler));

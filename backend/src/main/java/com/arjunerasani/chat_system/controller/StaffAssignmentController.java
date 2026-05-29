@@ -72,7 +72,8 @@ public class StaffAssignmentController {
                 }
             }
 
-            return ResponseEntity.ok(Map.of("activeAssignment", Collections.EMPTY_MAP, "waitingCount", globalWaitingPool.size()));
+            // no activeAssignment key at all when there's nothing assigned
+            return ResponseEntity.ok(Map.of("waitingCount", globalWaitingPool.size(), "staffStatus", staff.getStatus()));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "Failed system state resolution."));
         }
@@ -109,6 +110,26 @@ public class StaffAssignmentController {
             return ResponseEntity.ok(Map.of("message", "Appointment completed successfully"));
         } catch (Exception ex) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "Failed to complete appointment."));
+        }
+    }
+
+    @PutMapping("/logout")
+    public ResponseEntity<?> logout(@RequestHeader("Authorization") String token) {
+        try {
+            String staffEmail = jwtService.extractEmail(token);
+            Staff staff = staffRepository.findByEmail(staffEmail);
+
+            if (staff == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Staff not found"));
+            }
+
+            staff.setStatus(StaffStatus.OFFLINE);
+            staff.setLastSeenAt(LocalDateTime.now());
+            staffRepository.save(staff);
+
+            return ResponseEntity.ok(Map.of("message", "Logged out successfully"));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "Logout failed"));
         }
     }
 }

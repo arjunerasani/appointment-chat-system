@@ -12,7 +12,7 @@ import java.util.Date;
 
 @Component
 public class JWTService {
-    private final SecretKey key;
+    private static SecretKey key = null;
 
     // 8 hour expiration time
     private final long EXPIRATION_TIME = 1000 * 60 * 60 * 8;
@@ -32,7 +32,7 @@ public class JWTService {
                 .compact();
     }
 
-    public String extractEmail(String token) {
+    public static String extractEmail(String token) {
         if (token.startsWith("Bearer ")) {
             token = token.substring(7);
         }

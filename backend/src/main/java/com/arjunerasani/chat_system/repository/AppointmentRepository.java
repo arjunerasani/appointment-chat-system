@@ -30,4 +30,6 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     Appointment findByUserSecureToken(String token);
 
     long countByStatusAndRequestedAtBefore(Status status, LocalDateTime requestedAt);
+
+    List<Appointment> findByStatusAndRequestedAtBefore(Status status, LocalDateTime cutoff);
 }

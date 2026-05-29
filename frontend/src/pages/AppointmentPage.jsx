@@ -9,9 +9,32 @@ export default function AppointmentPage() {
     // session runtime data
     const [userToken, setUserToken] = useState(null);
     const [liveTicket, setLiveTicket] = useState(null);
+    const [emailInput, setEmailInput] = useState('');
+    const [emailSubmitted, setEmailSubmitted] = useState(false);
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
+
+    const handleSubmitEmail = async () => {
+        if (!emailInput.trim()) return;
+
+        try {
+            const response = await fetch(
+                `http://localhost:8080/appointment/update-email/${userToken}`,
+                {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: emailInput })
+                }
+            );
+
+            if (response.ok) {
+                setEmailSubmitted(true);
+            }
+        } catch (err) {
+            setError('Could not save your email.');
+        }
     };
 
     const handleSubmit = async (e) => {
@@ -111,6 +134,58 @@ export default function AppointmentPage() {
                         senderId={liveTicket.userId || 0}
                         senderName={liveTicket.username}
                     />)}
+                </div>
+            </div>
+        );
+    }
+
+    if (liveTicket && liveTicket.status === 'WAITING_FOR_STAFF') {
+        return (
+            <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center',
+                justifyContent: 'center', backgroundColor: '#f8fafc',
+                fontFamily: 'sans-serif', padding: '20px' }}>
+                <div style={{ maxWidth: '460px', width: '100%', backgroundColor: '#fff',
+                    borderRadius: '16px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)',
+                    padding: '40px', textAlign: 'center', border: '1px solid #e2e8f0' }}>
+                    <div style={{ fontSize: '3rem', marginBottom: '16px' }}>⏳</div>
+                    <h2 style={{ fontSize: '1.5rem', fontWeight: '700', color: '#1a202c', marginBottom: '12px' }}>
+                        All Staff Are Currently Busy
+                    </h2>
+                    <p style={{ color: '#718096', marginBottom: '28px', fontSize: '0.95rem', lineHeight: '1.6' }}>
+                        Leave your email address and the next available staff member will contact you.
+                    </p>
+
+                    {emailSubmitted ? (
+                        <div style={{ backgroundColor: '#f0fff4', border: '1px solid #c6f6d5',
+                            borderRadius: '8px', padding: '16px', color: '#276749' }}>
+                            ✓ Got it! We'll email you at <strong>{emailInput}</strong> when staff is available.
+                        </div>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            <input
+                                type="email"
+                                value={emailInput}
+                                onChange={(e) => setEmailInput(e.target.value)}
+                                placeholder="your@email.com"
+                                style={{ width: '100%', padding: '12px', border: '1px solid #cbd5e0',
+                                    borderRadius: '8px', fontSize: '1rem', boxSizing: 'border-box' }}
+                            />
+                            <button onClick={handleSubmitEmail}
+                                    disabled={!emailInput.trim()}
+                                    style={{ width: '100%', padding: '12px', backgroundColor: '#3182ce',
+                                        color: '#fff', border: 'none', borderRadius: '8px',
+                                        fontWeight: '600', cursor: 'pointer',
+                                        opacity: !emailInput.trim() ? 0.5 : 1 }}>
+                                Notify Me When Available
+                            </button>
+                            <button onClick={handleCancelQueue}
+                                    style={{ width: '100%', padding: '12px', backgroundColor: '#fff',
+                                        border: '1px solid #e2e8f0', color: '#e53e3e',
+                                        borderRadius: '8px', fontWeight: '600', cursor: 'pointer' }}>
+                                Cancel Instead
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
         );
