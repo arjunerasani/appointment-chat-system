@@ -21,15 +21,16 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     // this is for thread safety
     @Modifying
     @Transactional
-    @Query("UPDATE Appointment a SET a.status = :newStatus, a.assignedStaffId = :staffId, a.assignedAt = :now " +
-            "WHERE a.id = :appointmentId AND a.status = :requiredStatus")
-    int atomicClaimAppointment(@Param("appointmentId") Long appointmentId, @Param("staffId") Long staffId,
-                               @Param("newStatus") Status newStatus, @Param("requiredStatus") Status requiredStatus,
-                               @Param("now") LocalDateTime now);
+    @Query("UPDATE Appointment a SET a.status = :newStatus, a.assignedStaffId = :staffId, a.assignedAt = :now WHERE a.id = :id AND a.status IN :expectedStatuses")
+    int atomicClaimAppointment(@Param("id") Long id, @Param("staffId") Long staffId, @Param("newStatus") Status newStatus, @Param("expectedStatuses") List<Status> expectedStatuses, @Param("now") LocalDateTime now);
 
     Appointment findByUserSecureToken(String token);
 
     long countByStatusAndRequestedAtBefore(Status status, LocalDateTime requestedAt);
 
     List<Appointment> findByStatusAndRequestedAtBefore(Status status, LocalDateTime cutoff);
+
+    List<Appointment> findByStatusAndAssignedAtBefore(Status status, LocalDateTime cutoff);
+
+    List<Appointment> findByStatusInOrderByRequestedAtAsc(List<Status> statuses);
 }

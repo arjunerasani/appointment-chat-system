@@ -1,6 +1,7 @@
 package com.arjunerasani.chat_system.controller;
 
 import com.arjunerasani.chat_system.entity.AppointmentToken;
+import com.arjunerasani.chat_system.entity.Status;
 import com.arjunerasani.chat_system.repository.AppointmentTokenRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -36,8 +37,17 @@ public class TokenVerificationController {
                     "This secure session link has expired"));
         }
 
+        Status appointmentStatus = appointmentToken.getAppointment().getStatus();
+
+        // appointment was already claimed by another staff member
+        if (appointmentStatus != Status.WAITING && appointmentStatus != Status.WAITING_FOR_STAFF) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error",
+                    "This appointment has already been claimed"));
+        }
+
         return ResponseEntity.ok(Map.of("appointmentNumber",
-                appointmentToken.getAppointment().getAppointmentNumber(), "status",
+                appointmentToken.getAppointment().getAppointmentNumber(),
+                "appointmentId", appointmentToken.getAppointment().getId(),"status",
                 appointmentToken.getAppointment().getStatus(), "type", appointmentToken.getTokenType()));
     }
 }

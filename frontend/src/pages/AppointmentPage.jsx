@@ -191,6 +191,37 @@ export default function AppointmentPage() {
         );
     }
 
+    if (liveTicket && liveTicket.status === 'WAITING_FOR_USER_RETURN') {
+        return (
+            <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc', padding: '40px',
+                fontFamily: 'sans-serif' }}>
+                <div style={{ maxWidth: '800px', margin: '0 auto', backgroundColor: '#fff',
+                    borderRadius: '12px', border: '1px solid #edf2f7', padding: '24px',
+                    boxShadow: '0 4px 6px rgba(0,0,0,0.02)' }}>
+                    <div style={{ borderBottom: '1px solid #edf2f7', paddingBottom: '16px',
+                        marginBottom: '20px' }}>
+                    <span style={{ fontSize: '0.8rem', color: '#2b6cb0', fontWeight: '700',
+                        backgroundColor: '#ebf8ff', padding: '4px 8px', borderRadius: '4px' }}>
+                        LIVE SUPPORT CHANNEL
+                    </span>
+                        <h2 style={{ margin: '6px 0 0 0', color: '#1a202c' }}>
+                            Support Room #{liveTicket.appointmentNumber}
+                        </h2>
+                    </div>
+
+                    {liveTicket.appointmentId && (
+                        <ChatWindow
+                            appointmentId={liveTicket.appointmentId}
+                            senderType="USER"
+                            senderId={0}
+                            senderName="User"
+                        />
+                    )}
+                </div>
+            </div>
+        );
+    }
+
     // queue waiting interface
     if (liveTicket && liveTicket.status === 'WAITING') {
         return (

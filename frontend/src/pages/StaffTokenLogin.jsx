@@ -18,6 +18,8 @@ export default function StaffTokenLogin() {
                     setStatus('valid');
                 } else if (response.status === 410) {
                     setStatus('expired');
+                } else if (response.status === 409) {
+                    setStatus("claimed");
                 } else {
                     setStatus('invalid');
                 }
@@ -57,6 +59,29 @@ export default function StaffTokenLogin() {
                     <h2 style={{ color: '#1a202c', marginBottom: '12px' }}>Link Expired</h2>
                     <p style={{ color: '#718096', marginBottom: '24px' }}>
                         This link has expired. Please log in directly to check the queue.
+                    </p>
+                    <button onClick={() => window.location.href = 'http://localhost:8080/oauth2/authorization/google'}
+                            style={{ width: '100%', padding: '12px', backgroundColor: '#4c51bf',
+                                color: '#fff', border: 'none', borderRadius: '8px',
+                                fontWeight: '600', cursor: 'pointer' }}>
+                        Log In to Dashboard
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    if (status === 'claimed') {
+        return (
+            <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center',
+                justifyContent: 'center', backgroundColor: '#f8fafc', fontFamily: 'sans-serif' }}>
+                <div style={{ maxWidth: '400px', textAlign: 'center', backgroundColor: '#fff',
+                    padding: '40px', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+                    <div style={{ fontSize: '3rem', marginBottom: '16px' }}>👤</div>
+                    <h2 style={{ color: '#1a202c', marginBottom: '12px' }}>Already Claimed</h2>
+                    <p style={{ color: '#718096', marginBottom: '24px', lineHeight: '1.6' }}>
+                        Another staff member has already claimed this appointment.
+                        You can log in to check if there are other users waiting.
                     </p>
                     <button onClick={() => window.location.href = 'http://localhost:8080/oauth2/authorization/google'}
                             style={{ width: '100%', padding: '12px', backgroundColor: '#4c51bf',

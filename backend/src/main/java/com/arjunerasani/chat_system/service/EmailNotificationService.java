@@ -40,10 +40,17 @@ public class EmailNotificationService {
             return;
         }
 
-        // no one online/available then notify all staff so they can log in
-        List<Staff> allStaff = staffRepository.findAll();
+        List<Staff> busyStaff = staffRepository.findByStatus(StaffStatus.ONLINE_BUSY);
 
-        for (Staff staff : allStaff) {
+        // staff are online but busy they'll see it when they complete their current assignment no email is needed
+        if (!busyStaff.isEmpty()) {
+            return;
+        }
+
+        // nobody online so email everyone
+        List<Staff> offlineStaff  = staffRepository.findByStatus(StaffStatus.OFFLINE);
+
+        for (Staff staff : offlineStaff) {
             String secureToken = generateSecureToken(appointment, TokenType.STAFF_CLAIM);
             String actionUrl = frontendBaseUrl + "/chat/staff/" + secureToken;
 

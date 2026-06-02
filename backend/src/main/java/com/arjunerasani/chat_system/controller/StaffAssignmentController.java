@@ -6,6 +6,7 @@ import com.arjunerasani.chat_system.entity.StaffStatus;
 import com.arjunerasani.chat_system.entity.Status;
 import com.arjunerasani.chat_system.repository.AppointmentRepository;
 import com.arjunerasani.chat_system.repository.StaffRepository;
+import com.arjunerasani.chat_system.service.EmailNotificationService;
 import com.arjunerasani.chat_system.service.JWTService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -30,6 +31,9 @@ public class StaffAssignmentController {
     @Autowired
     private JWTService jwtService;
 
+    @Autowired
+    private EmailNotificationService emailNotificationService;
+
     @GetMapping("/status-check")
     public ResponseEntity<?> checkStatusAndAllocate(@RequestHeader("Authorization") String token) {
         try {
@@ -48,7 +52,8 @@ public class StaffAssignmentController {
             List<Status> activeStatuses = List.of(Status.ASSIGNED, Status.ACTIVE, Status.WAITING_FOR_USER_RETURN);
             Appointment currentChat = appointmentRepository.findByAssignedStaffIdAndStatusIn(staffId, activeStatuses);
 
-            List<Appointment> globalWaitingPool = appointmentRepository.findByStatusOrderByRequestedAtAsc(Status.WAITING);
+            List<Appointment> globalWaitingPool = appointmentRepository
+                    .findByStatusInOrderByRequestedAtAsc(List.of(Status.WAITING, Status.WAITING_FOR_STAFF));
 
             if (currentChat != null) {
                 return ResponseEntity.ok(Map.of("activeAssignment", currentChat, "waitingCount", globalWaitingPool.size(), "staffStatus", staff.getStatus()));
@@ -57,18 +62,29 @@ public class StaffAssignmentController {
             // automated queue allocation
             if (!globalWaitingPool.isEmpty()) {
                 Appointment oldest = globalWaitingPool.get(0);
+                boolean wasWaitingForStaff = oldest.getStatus() == Status.WAITING_FOR_STAFF;
 
-                int rowsUpdated = appointmentRepository.atomicClaimAppointment(oldest.getId(), staffId, Status.ACTIVE, Status.WAITING, LocalDateTime.now());
+                int rowsUpdated = appointmentRepository.atomicClaimAppointment(
+                        oldest.getId(), staffId, Status.ACTIVE,
+                        List.of(Status.WAITING, Status.WAITING_FOR_STAFF),  // both valid starting statuses
+                        LocalDateTime.now());
 
                 if (rowsUpdated > 0) {
-                    // current thread won the race condition
                     oldest.setStatus(Status.ACTIVE);
                     oldest.setAssignedStaffId(staffId);
 
                     staff.setStatus(StaffStatus.ONLINE_BUSY);
                     staffRepository.save(staff);
 
-                    return ResponseEntity.ok(Map.of("activeAssignment", oldest, "waitingCount", globalWaitingPool.size() - 1, "staffStatus", staff.getStatus()));
+                    // if user already left their email, notify them to return
+                    if (wasWaitingForStaff && oldest.getEmail() != null && !oldest.getEmail().isBlank()) {
+                        oldest.setStatus(Status.WAITING_FOR_USER_RETURN);
+                        appointmentRepository.save(oldest);
+                        emailNotificationService.notifyUserToReturn(oldest);
+                    }
+
+                    return ResponseEntity.ok(Map.of("activeAssignment", oldest, "waitingCount", globalWaitingPool.size() - 1, "staffStatus", staff.getStatus()
+                    ));
                 }
             }
 
