@@ -23,6 +23,9 @@ public class AppointmentTimeoutService {
     @Value("${app.user-return.timeout-minutes}")
     private int userReturnTimeoutMinutes;
 
+    @Value("${app.abandoned.timeout-minutes}")
+    private int abandonedTimeoutMinutes;
+
     // runs every 30 seconds to check for timed out appointments
     @Scheduled(fixedRate = 30000)
     @Transactional
@@ -54,6 +57,43 @@ public class AppointmentTimeoutService {
 
         if (!timedOut.isEmpty()) {
             appointmentRepository.saveAll(timedOut);
+        }
+    }
+
+    // expires WAITING_FOR_STAFF appointments where user never left an email
+    @Scheduled(fixedRate = 60000)
+    @Transactional
+    public void checkAbandonedNoEmail() {
+        LocalDateTime cutoff = LocalDateTime.now().minusMinutes(waitingTimeoutMinutes + 10);
+        List<Appointment> abandoned = appointmentRepository.findByStatusAndEmailIsNullAndRequestedAtBefore(Status.WAITING_FOR_STAFF, cutoff);
+
+        for (Appointment appointment : abandoned) {
+            appointment.setStatus(Status.EXPIRED);
+        }
+
+        if (!abandoned.isEmpty()) {
+            appointmentRepository.saveAll(abandoned);
+        }
+    }
+
+    // expires appointments where user closed browser and stopped polling
+    @Scheduled(fixedRate = 60000)
+    @Transactional
+    public void checkAbandonedByPolling() {
+        // if user hasn't polled in 3x the polling interval (3.5s * 3 = ~10s) they're gone
+        LocalDateTime cutoff = LocalDateTime.now().minusMinutes(abandonedTimeoutMinutes);
+
+        List<Appointment> abandoned = appointmentRepository.findByStatusInAndLastSeenAtBefore(List.of(Status.WAITING, Status.WAITING_FOR_STAFF), cutoff);
+
+        for (Appointment appointment : abandoned) {
+            // only expire if no email was provided, otherwise keep waiting
+            if (appointment.getEmail() == null || appointment.getEmail().isBlank()) {
+                appointment.setStatus(Status.EXPIRED);
+            }
+        }
+
+        if (!abandoned.isEmpty()) {
+            appointmentRepository.saveAll(abandoned);
         }
     }
 }

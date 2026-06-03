@@ -33,4 +33,10 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     List<Appointment> findByStatusAndAssignedAtBefore(Status status, LocalDateTime cutoff);
 
     List<Appointment> findByStatusInOrderByRequestedAtAsc(List<Status> statuses);
+
+    // for finding abandoned appointments with no email
+    List<Appointment> findByStatusAndEmailIsNullAndRequestedAtBefore(Status status, LocalDateTime cutoff);
+
+    // for finding appointments where user stopped polling
+    List<Appointment> findByStatusInAndLastSeenAtBefore(List<Status> statuses, LocalDateTime cutoff);
 }

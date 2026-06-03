@@ -73,6 +73,10 @@ public class AppointmentController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Invalid routing key."));
         }
 
+        // updated the last seen so we know the user is still on the page
+        appointment.setLastSeenAt(LocalDateTime.now());
+        appointmentRepository.save(appointment);
+
         // this is for metrics and queue number for the user
         long position = 0;
 
@@ -130,5 +134,23 @@ public class AppointmentController {
         appointmentRepository.save(appointment);
 
         return ResponseEntity.ok(Map.of("message", "Email saved"));
+    }
+
+    @PutMapping("/rejoin/{appointmentId}")
+    public ResponseEntity<?> markUserRejoined(@PathVariable Long appointmentId) {
+        Appointment appointment = appointmentRepository.findById(appointmentId).orElse(null);
+
+        if (appointment == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Appointment not found"));
+        }
+
+        // only transition if currently waiting for user to return
+        if (appointment.getStatus() == Status.WAITING_FOR_USER_RETURN) {
+            appointment.setStatus(Status.ACTIVE);
+            appointment.setLastSeenAt(LocalDateTime.now());
+            appointmentRepository.save(appointment);
+        }
+
+        return ResponseEntity.ok(Map.of("message", "Rejoined successfully"));
     }
 }

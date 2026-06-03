@@ -14,7 +14,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -120,6 +119,35 @@ public class StaffAssignmentController {
             appointment.setCompletedAt(LocalDateTime.now());
             appointmentRepository.save(appointment);
 
+            // immediately check queue instead of waiting for next poll
+            List<Appointment> waitingPool = appointmentRepository.findByStatusInOrderByRequestedAtAsc(List.of(Status.WAITING, Status.WAITING_FOR_STAFF));
+
+            if (!waitingPool.isEmpty()) {
+                Appointment next = waitingPool.get(0);
+                boolean wasWaitingForStaff = next.getStatus() == Status.WAITING_FOR_STAFF;
+
+                int rowsUpdated = appointmentRepository.atomicClaimAppointment(
+                        next.getId(), staff.getId(), Status.ACTIVE,
+                        List.of(Status.WAITING, Status.WAITING_FOR_STAFF),
+                        LocalDateTime.now());
+
+                if (rowsUpdated > 0) {
+                    next.setStatus(Status.ACTIVE);
+                    next.setAssignedStaffId(staff.getId());
+                    staff.setStatus(StaffStatus.ONLINE_BUSY);
+                    staffRepository.save(staff);
+
+                    if (wasWaitingForStaff && next.getEmail() != null && !next.getEmail().isBlank()) {
+                        next.setStatus(Status.WAITING_FOR_USER_RETURN);
+                        appointmentRepository.save(next);
+                        emailNotificationService.notifyUserToReturn(next);
+                    }
+
+                    return ResponseEntity.ok(Map.of("message", "Appointment completed, next assigned", "nextAssignment", next));
+                }
+            }
+
+            // no next appointment the staff can go available
             staff.setStatus(StaffStatus.ONLINE_AVAILABLE);
             staffRepository.save(staff);
 

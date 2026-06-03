@@ -19,6 +19,12 @@ export default function UserTokenRejoin() {
                     const data = await response.json();
                     setAppointmentData(data);
                     setStatus('valid');
+
+                    // tell the backend the user has returned, transition to ACTIVE
+                    await fetch(
+                        `http://localhost:8080/appointment/rejoin/${data.appointmentId}`,
+                        { method: 'PUT' }
+                    );
                 } else if (response.status === 410) {
                     setStatus('expired');
                 } else {
