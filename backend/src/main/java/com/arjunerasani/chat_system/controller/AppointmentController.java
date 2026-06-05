@@ -1,6 +1,7 @@
 package com.arjunerasani.chat_system.controller;
 
 import com.arjunerasani.chat_system.entity.Appointment;
+import com.arjunerasani.chat_system.entity.StaffStatus;
 import com.arjunerasani.chat_system.entity.Status;
 import com.arjunerasani.chat_system.repository.AppointmentRepository;
 import com.arjunerasani.chat_system.repository.StaffRepository;
@@ -24,6 +25,9 @@ public class AppointmentController {
 
     @Autowired
     private EmailNotificationService emailNotificationService;
+
+    @Autowired
+    private StaffRepository staffRepository;
 
     @PostMapping("/request")
     public ResponseEntity<?> requestAppointment(@RequestBody Map<String, String> requestData){
@@ -73,20 +77,34 @@ public class AppointmentController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Invalid routing key."));
         }
 
-        // updated the last seen so we know the user is still on the page
+        if (appointment.getStatus() == Status.COMPLETED || appointment.getStatus() == Status.CANCELLED) {
+            return ResponseEntity.ok(Map.of(
+                    "status", appointment.getStatus(),
+                    "appointmentNumber", appointment.getAppointmentNumber(),
+                    "username", appointment.getUsername(),
+                    "reason", appointment.getReason(),
+                    "position", 0,
+                    "appointmentId", appointment.getId()
+            ));
+        }
+
+        // only update active/waiting tickets
         appointment.setLastSeenAt(LocalDateTime.now());
         appointmentRepository.save(appointment);
 
-        // this is for metrics and queue number for the user
         long position = 0;
-
         if (appointment.getStatus() == Status.WAITING) {
             position = appointmentRepository.countByStatusAndRequestedAtBefore(Status.WAITING, appointment.getRequestedAt()) + 1;
         }
 
-        return ResponseEntity.ok(Map.of("status", appointment.getStatus(), "appointmentNumber", appointment.getAppointmentNumber(),
-                "username", appointment.getUsername(), "reason", appointment.getReason(), "position", position,
-                "appointmentId", appointment.getId()));
+        return ResponseEntity.ok(Map.of(
+                "status", appointment.getStatus(),
+                "appointmentNumber", appointment.getAppointmentNumber(),
+                "username", appointment.getUsername(),
+                "reason", appointment.getReason(),
+                "position", position,
+                "appointmentId", appointment.getId()
+        ));
     }
 
     @PutMapping("/cancel/{token}")
@@ -97,11 +115,27 @@ public class AppointmentController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Ticket has already been assigned to staff."));
         }
 
+        if (appointment.getStatus() == Status.COMPLETED || appointment.getStatus() == Status.CANCELLED || appointment.getStatus() == Status.EXPIRED) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Appointment cannot be cancelled"));
+        }
+
+        Long assignedStaffId = appointment.getAssignedStaffId();
+        Status currentStatus = appointment.getStatus();
+
         appointment.setStatus(Status.CANCELLED);
         appointment.setCancelledAt(LocalDateTime.now());
         appointmentRepository.save(appointment);
 
-        return  ResponseEntity.ok(Map.of("success", "Appointment has been cancelled."));
+        if ((currentStatus == Status.ACTIVE || currentStatus == Status.ASSIGNED || currentStatus == Status.WAITING_FOR_USER_RETURN)
+                && assignedStaffId != null) {
+
+            staffRepository.findById(assignedStaffId).ifPresent(staff -> {
+                staff.setStatus(StaffStatus.ONLINE_AVAILABLE);
+                staffRepository.save(staff);
+            });
+        }
+
+        return ResponseEntity.ok(Map.of("success", "Appointment has been cancelled."));
     }
 
     @GetMapping("/pending")

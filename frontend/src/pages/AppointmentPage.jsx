@@ -12,6 +12,14 @@ export default function AppointmentPage() {
     const [emailInput, setEmailInput] = useState('');
     const [emailSubmitted, setEmailSubmitted] = useState(false);
 
+    useEffect(() => {
+        const savedToken = localStorage.getItem('user_token');
+
+        if (savedToken) {
+            setUserToken(savedToken);
+        }
+    }, []);
+
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
@@ -53,6 +61,7 @@ export default function AppointmentPage() {
 
             if (response.ok) {
                 setUserToken(data.userToken);
+                localStorage.setItem('user_token', data.userToken);
             } else {
                 setError(data.error || 'Server rejected registration values.');
             }
@@ -63,7 +72,7 @@ export default function AppointmentPage() {
         }
     };
 
-    // Keep an open background look checking the state machine status
+    // keep an open background look checking the state machine status
     useEffect(() => {
         if (!userToken) return;
 
@@ -74,6 +83,10 @@ export default function AppointmentPage() {
                 if (response.ok) {
                     const data = await response.json();
                     setLiveTicket(data);
+
+                    if (data.status === 'CANCELLED' || data.status === 'COMPLETED') {
+                        localStorage.removeItem('user_token');
+                    }
                 } else {
                     setError('Lost synchronization with ticket channel context.');
                 }
@@ -100,9 +113,15 @@ export default function AppointmentPage() {
 
             if (response.ok) {
                 setUserToken(null);
+                localStorage.removeItem('user_token');
                 setLiveTicket(null);
                 setFormData({ username: '', email: '', reason: '' });
-                alert("Your appointment request has been cancelled.");
+                setEmailInput('');
+                setEmailSubmitted(false);
+                //alert("Your appointment request has been cancelled.");
+            } else {
+                const data = await response.json();
+                setError(data.error || 'Could not cancel appointment')
             }
         } catch (err) {
             setError('Could not process execution cancellation commands safely.');
@@ -134,6 +153,36 @@ export default function AppointmentPage() {
                         senderId={liveTicket.userId || 0}
                         senderName={liveTicket.username}
                     />)}
+                </div>
+            </div>
+        );
+    }
+
+    if (liveTicket && liveTicket.status === 'CANCELLED') {
+        return (
+            <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center',
+                justifyContent: 'center', backgroundColor: '#f8fafc', fontFamily: 'sans-serif',
+                padding: '20px' }}>
+                <div style={{ maxWidth: '460px', width: '100%', backgroundColor: '#fff',
+                    borderRadius: '16px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)',
+                    padding: '40px', textAlign: 'center', border: '1px solid #e2e8f0' }}>
+                    <div style={{ fontSize: '3rem', marginBottom: '16px' }}>✕</div>
+                    <h2 style={{ fontSize: '1.6rem', fontWeight: '700', color: '#1a202c',
+                        marginBottom: '12px' }}>Appointment Cancelled</h2>
+                    <p style={{ color: '#718096', marginBottom: '24px' }}>
+                        Your appointment has been cancelled successfully.
+                    </p>
+                    <button onClick={() => {
+                        setUserToken(null);
+                        localStorage.removeItem('user_token');
+                        setLiveTicket(null);
+                        setFormData({ username: '', email: '', reason: '' });
+                    }}
+                            style={{ width: '100%', padding: '12px', backgroundColor: '#3182ce',
+                                color: '#fff', border: 'none', borderRadius: '8px',
+                                fontWeight: '600', cursor: 'pointer' }}>
+                        Back to Home
+                    </button>
                 </div>
             </div>
         );
@@ -271,7 +320,7 @@ export default function AppointmentPage() {
                         Reference #{liveTicket.appointmentNumber}
                     </p>
                     <button
-                        onClick={() => { setUserToken(null); setLiveTicket(null); setFormData({ username: '', email: '', reason: '' }); }}
+                        onClick={() => { setUserToken(null);localStorage.removeItem('user_token');setLiveTicket(null); setFormData({ username: '', email: '', reason: '' }); }}
                         style={{ marginTop: '24px', width: '100%', padding: '12px',
                             backgroundColor: '#3182ce', color: '#fff', border: 'none',
                             borderRadius: '8px', fontWeight: '600', cursor: 'pointer' }}>

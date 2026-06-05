@@ -13,24 +13,25 @@ export default function StaffDashboard() {
     const [staffStatus, setStaffStatus] = useState('ONLINE_AVAILABLE');
 
     useEffect(() => {
-        const tokenFromUrl = searchParams.get('token');
+        // 1. Unify token resolution up front
+        let currentToken = searchParams.get('token');
 
-        if (tokenFromUrl) {
-            localStorage.setItem('staff_token', tokenFromUrl);
-
+        if (currentToken) {
+            localStorage.setItem('staff_token', currentToken);
+            // Clean up the URL query parameter tracking
             navigate('/staff-dashboard', { replace: true });
             return;
         }
 
+        // Fallback to local storage if it wasn't in the URL query parameters
         const savedToken = localStorage.getItem('staff_token');
 
         if (!savedToken) {
-            console.warn("No authentication state discovered. Redirecting to login.")
+            console.warn("No authentication state discovered. Redirecting to login.");
             window.location.href = 'http://localhost:8080/oauth2/authorization/google';
             return;
         }
 
-        // checkout routine
         const checkStaffStatusAndAssignments = async () => {
             try {
                 const response = await fetch('http://localhost:8080/api/staff/status-check', {
@@ -39,15 +40,23 @@ export default function StaffDashboard() {
 
                 if (response.ok) {
                     const data = await response.json();
-                    // data contains activeAssignment object if allocated, plus global waiting counts
-                    setActiveAssignment(data.activeAssignment?.id ? data.activeAssignment : null);
+
+                    if (data.activeAssignment && data.activeAssignment.id) {
+                        setActiveAssignment(data.activeAssignment);
+                    } else {
+                        setActiveAssignment(null);
+                    }
+
                     setStaffStatus(data.staffStatus || 'ONLINE_AVAILABLE');
                     setSystemMetrics({ waitingCount: data.waitingCount || 0});
                     setError('');
                 } else if (response.status === 401 || response.status === 403) {
-                    // token expired or invalid
-                    localStorage.removeItem('staff_token');
-                    window.location.href = 'http://localhost:8080/oauth2/authorization/google';
+                    console.error(`CRITICAL: Server rejected token with status code: ${response.status}`);
+
+                    // localStorage.removeItem('staff_token');
+                    // window.location.href = 'http://localhost:8080/oauth2/authorization/google';
+
+                    setError(`Authentication rejected by server (${response.status}). Check backend console.`);
                 } else {
                     setError('Failed to process routing.');
                 }
@@ -58,9 +67,10 @@ export default function StaffDashboard() {
             }
         };
 
+        // Run immediately on component initialization
         checkStaffStatusAndAssignments();
 
-        // Set up polling interval to check for routed FIFO assignments every 5 seconds
+        // The polling interval will now run reliably
         const interval = setInterval(checkStaffStatusAndAssignments, 5000);
         return () => clearInterval(interval);
     }, [searchParams, navigate]);
@@ -106,6 +116,7 @@ export default function StaffDashboard() {
 
             if (response.ok) {
                 setActiveAssignment(null);
+                setStaffStatus(data.staffStatus || 'ONLINE_AVAILABLE');
             } else {
                 alert(`Error: ${data.error}`);
             }
@@ -161,7 +172,7 @@ export default function StaffDashboard() {
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #edf2f7', paddingBottom: '16px', marginBottom: '20px' }}>
                                 <div>
                                     <span style={{ fontSize: '0.8rem', color: '#4c51bf', fontWeight: '700', backgroundColor: '#e0e7ff', padding: '4px 8px', borderRadius: '4px' }}>ACTIVE ROUTE</span>
-                                    <h2 style={{ margin: '8px 0 2px 0', fontSize: '1.4rem', color: '#1a202c' }}>{activeAssignment.userName}</h2>
+                                    <h2 style={{ margin: '8px 0 2px 0', fontSize: '1.4rem', color: '#1a202c' }}>{activeAssignment.username}</h2>
                                     <p style={{ margin: 0, color: '#718096', fontSize: '0.9rem' }}>Reason: {activeAssignment.reason}</p>
                                 </div>
                                 <button onClick={handleCompleteAppointment} style={{ backgroundColor: '#e53e3e', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '6px', fontWeight: '600', cursor: 'pointer' }}>

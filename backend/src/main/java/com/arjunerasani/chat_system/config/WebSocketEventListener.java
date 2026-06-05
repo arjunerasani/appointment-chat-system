@@ -27,16 +27,13 @@ public class WebSocketEventListener {
     @Autowired
     private EmailNotificationService emailNotificationService;
 
-    // this is staff disconnecting from active appointment
     @EventListener
     public void handleDisconnect(SessionDisconnectEvent event) {
         StompHeaderAccessor accessor = StompHeaderAccessor.wrap(event.getMessage());
-
-        // get the staff email we stored in the session on connect
         String staffEmail = (String) accessor.getSessionAttributes().get("staffEmail");
 
         if (staffEmail == null) {
-            return; // was a user connection, not staff
+            return;
         }
 
         Staff staff = staffRepository.findByEmail(staffEmail);
@@ -45,11 +42,6 @@ public class WebSocketEventListener {
             return;
         }
 
-        staff.setStatus(StaffStatus.OFFLINE);
-        staff.setLastSeenAt(LocalDateTime.now());
-        staffRepository.save(staff);
-
-        // return any active appointment back to the queue
         List<Status> activeStatuses = List.of(Status.ASSIGNED, Status.ACTIVE);
         Appointment activeAppointment = appointmentRepository
                 .findByAssignedStaffIdAndStatusIn(staff.getId(), activeStatuses);
@@ -59,7 +51,6 @@ public class WebSocketEventListener {
             activeAppointment.setAssignedStaffId(null);
             appointmentRepository.save(activeAppointment);
 
-            // notify remained staff that this appointment is back in queue
             emailNotificationService.notifyEligibleStaff(activeAppointment);
         }
     }

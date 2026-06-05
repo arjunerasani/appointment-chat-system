@@ -36,18 +36,18 @@ public class StaffAssignmentController {
     @GetMapping("/status-check")
     public ResponseEntity<?> checkStatusAndAllocate(@RequestHeader("Authorization") String token) {
         try {
-            // get the email hidden inside the jwt authorization header
             String staffEmail = jwtService.extractEmail(token);
-
             Staff staff = staffRepository.findByEmail(staffEmail);
 
             if (staff == null) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Staff profile not found in system"));
             }
 
+            staff.setLastSeenAt(LocalDateTime.now());
+            staff = staffRepository.save(staff); // Persist it immediately!
+
             Long staffId = staff.getId();
 
-            // check if the staff is currently handling a chat
             List<Status> activeStatuses = List.of(Status.ASSIGNED, Status.ACTIVE, Status.WAITING_FOR_USER_RETURN);
             Appointment currentChat = appointmentRepository.findByAssignedStaffIdAndStatusIn(staffId, activeStatuses);
 
@@ -58,37 +58,42 @@ public class StaffAssignmentController {
                 return ResponseEntity.ok(Map.of("activeAssignment", currentChat, "waitingCount", globalWaitingPool.size(), "staffStatus", staff.getStatus()));
             }
 
-            // automated queue allocation
+            if (staff.getStatus() == StaffStatus.ONLINE_BUSY) {
+                staff.setStatus(StaffStatus.ONLINE_AVAILABLE);
+                staff = staffRepository.save(staff);
+            }
+
             if (!globalWaitingPool.isEmpty()) {
                 Appointment oldest = globalWaitingPool.get(0);
                 boolean wasWaitingForStaff = oldest.getStatus() == Status.WAITING_FOR_STAFF;
 
                 int rowsUpdated = appointmentRepository.atomicClaimAppointment(
                         oldest.getId(), staffId, Status.ACTIVE,
-                        List.of(Status.WAITING, Status.WAITING_FOR_STAFF),  // both valid starting statuses
+                        List.of(Status.WAITING, Status.WAITING_FOR_STAFF),
                         LocalDateTime.now());
 
                 if (rowsUpdated > 0) {
                     oldest.setStatus(Status.ACTIVE);
                     oldest.setAssignedStaffId(staffId);
 
-                    staff.setStatus(StaffStatus.ONLINE_BUSY);
-                    staffRepository.save(staff);
+                    Staff freshStaff = staffRepository.findByEmail(staffEmail);
+                    freshStaff.setStatus(StaffStatus.ONLINE_BUSY);
+                    freshStaff.setLastSeenAt(LocalDateTime.now()); // Keep in sync
+                    staffRepository.save(freshStaff);
 
-                    // if user already left their email, notify them to return
                     if (wasWaitingForStaff && oldest.getEmail() != null && !oldest.getEmail().isBlank()) {
                         oldest.setStatus(Status.WAITING_FOR_USER_RETURN);
                         appointmentRepository.save(oldest);
                         emailNotificationService.notifyUserToReturn(oldest);
                     }
 
-                    return ResponseEntity.ok(Map.of("activeAssignment", oldest, "waitingCount", globalWaitingPool.size() - 1, "staffStatus", staff.getStatus()
-                    ));
+                    return ResponseEntity.ok(Map.of("activeAssignment", oldest, "waitingCount", globalWaitingPool.size() - 1, "staffStatus", freshStaff.getStatus()));
                 }
             }
 
-            // no activeAssignment key at all when there's nothing assigned
-            return ResponseEntity.ok(Map.of("waitingCount", globalWaitingPool.size(), "staffStatus", staff.getStatus()));
+            Staff finalStaffState = staffRepository.findByEmail(staffEmail);
+
+            return ResponseEntity.ok(Map.of("waitingCount", globalWaitingPool.size(), "staffStatus", finalStaffState.getStatus()));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "Failed system state resolution."));
         }
@@ -134,8 +139,10 @@ public class StaffAssignmentController {
                 if (rowsUpdated > 0) {
                     next.setStatus(Status.ACTIVE);
                     next.setAssignedStaffId(staff.getId());
-                    staff.setStatus(StaffStatus.ONLINE_BUSY);
-                    staffRepository.save(staff);
+
+                    Staff freshStaff = staffRepository.findByEmail(staffEmail);
+                    freshStaff.setStatus(StaffStatus.ONLINE_BUSY);
+                    staffRepository.save(freshStaff);
 
                     if (wasWaitingForStaff && next.getEmail() != null && !next.getEmail().isBlank()) {
                         next.setStatus(Status.WAITING_FOR_USER_RETURN);
@@ -143,15 +150,15 @@ public class StaffAssignmentController {
                         emailNotificationService.notifyUserToReturn(next);
                     }
 
-                    return ResponseEntity.ok(Map.of("message", "Appointment completed, next assigned", "nextAssignment", next));
+                    return ResponseEntity.ok(Map.of("message", "Appointment completed, next assigned", "nextAssignment", next, "staffStatus", freshStaff.getStatus()));
                 }
             }
 
-            // no next appointment the staff can go available
-            staff.setStatus(StaffStatus.ONLINE_AVAILABLE);
-            staffRepository.save(staff);
+            Staff freshStaff = staffRepository.findByEmail(staffEmail);
+            freshStaff.setStatus(StaffStatus.ONLINE_AVAILABLE);
+            staffRepository.save(freshStaff);
 
-            return ResponseEntity.ok(Map.of("message", "Appointment completed successfully"));
+            return ResponseEntity.ok(Map.of("message", "Appointment completed successfully", "staffStatus", freshStaff.getStatus()));
         } catch (Exception ex) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "Failed to complete appointment."));
         }

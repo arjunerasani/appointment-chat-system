@@ -1,8 +1,10 @@
 package com.arjunerasani.chat_system.service;
 
 import com.arjunerasani.chat_system.entity.Appointment;
+import com.arjunerasani.chat_system.entity.Staff;
 import com.arjunerasani.chat_system.entity.Status;
 import com.arjunerasani.chat_system.repository.AppointmentRepository;
+import com.arjunerasani.chat_system.repository.StaffRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -16,6 +18,9 @@ import java.util.List;
 public class AppointmentTimeoutService {
     @Autowired
     private AppointmentRepository appointmentRepository;
+
+    @Autowired
+    private StaffRepository staffRepository;
 
     @Value("${app.waiting.timeout-minutes}")
     private int waitingTimeoutMinutes;
@@ -94,6 +99,20 @@ public class AppointmentTimeoutService {
 
         if (!abandoned.isEmpty()) {
             appointmentRepository.saveAll(abandoned);
+        }
+    }
+
+    @Scheduled(fixedRate = 20000)
+    @Transactional
+    public void checkStaffHeartbeats() {
+        java.time.LocalDateTime deadThreshold = java.time.LocalDateTime.now().minusSeconds(15);
+
+        List<Staff> activeStaff = staffRepository.findByStatus(com.arjunerasani.chat_system.entity.StaffStatus.ONLINE_AVAILABLE);
+        for (Staff staff : activeStaff) {
+            if (staff.getLastSeenAt().isBefore(deadThreshold)) {
+                staff.setStatus(com.arjunerasani.chat_system.entity.StaffStatus.OFFLINE);
+                staffRepository.save(staff);
+            }
         }
     }
 }
