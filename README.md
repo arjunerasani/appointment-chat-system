@@ -147,6 +147,9 @@ To test the application across portals locally without data overlapping, use a *
 3. To bypass waiting the full 5 minutes in local testing, note that the background worker sweeps every **20 seconds**.
 4. The system updates the ticket status to `WAITING_FOR_STAFF` and prompts the user to submit an email address.
 5. Once a staff member logs in and claims the ticket, the user automatically receives a notification email containing a token-secured recovery link (`/chat/user/{secureToken}`) to rejoin their session.
+
+ **Note: At least one staff account must be present in the database for appointment requests to successfully go through.**
+ 
 ---
  
 ## 📄 Core Architecture Documentation
