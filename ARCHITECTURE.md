@@ -4,7 +4,7 @@
 
 ## 1. Overall Architecture
 
-The application is built around a decoupled client server model. The frontend is a single page application that handles presentation and user interaction, while the backend operates as a stateless REST API and transaction manager. Real-time state sync between clients is handled through event driven WebSockets.
+The application is built around a decoupled client server model. The frontend is a single page application that handles presentation and user interaction, while the backend operates as a stateless REST API and transaction manager. Real time state sync between clients is handled through event driven WebSockets.
 
 ### 1.1 High Level Architecture Diagram
 
@@ -51,15 +51,15 @@ The application is built around a decoupled client server model. The frontend is
 ### 1.2 Architectural Assumptions
 
 - **Thread Safe Allocations:** Multiple support agents will hit the database queue at the same time, so concurrency controls live at the persistence layer rather than in application memory.
-- **Network Stability:** Clients are assumed to have reasonably stable connections, but socket drops are expected. The system deliberately separates connection failures from business-logic state changes so one doesn't accidentally trigger the other.
+- **Network Stability:** Clients are assumed to have reasonably stable connections, but socket drops are expected. The system deliberately separates connection failures from business logic state changes so one doesn't accidentally trigger the other.
 - **Single Concurrent Track:** A staff member handles one customer at a time to maintain quality of service.
 
 ### 1.3 Main Components & Modules
 
 - **Client Interface (React + Vite):** A responsive SPA using `react-router-dom` for routing, `useState`/`useEffect` for local state, and reactive STOMP handlers for WebSocket communication.
-- **Authentication Tier (OAuth2 + JWT):** Manages Google SSO handshakes on the backend, issues signed JWTs on successful login, and verifies incoming Bearer tokens without maintaining any server-side session state.
+- **Authentication Tier (OAuth2 + JWT):** Manages Google SSO handshakes on the backend, issues signed JWTs on successful login, and verifies incoming Bearer tokens without maintaining any server side session state.
 - **Queue Engine (FIFO):** Allocates appointments strictly in arrival order (`requestedAt ASC`), validating client status before making any binding assignment.
-- **Notification Engine (JavaMail):** Sends asynchronous emails containing short-lived tokens, never raw database IDs or structural keys.
+- **Notification Engine (JavaMail):** Sends asynchronous emails containing short lived tokens, never raw database IDs or structural keys.
 
 ---
 
@@ -171,7 +171,7 @@ Monitors and enforces queue health across three areas:
 The staff dashboard currently uses a flat 5 second HTTP poll loop to track system state. This works fine for small teams but scales linearly, every active staff member adds another database read every 5 seconds regardless of whether anything has changed.
 
 **In Memory WebSocket Broker**  
-The app uses Spring's built-in simple message broker. If you ever deploy this behind a load balancer across multiple server instances, messages sent from a user on Server A won't reach a staff member connected to Server B.
+The app uses Spring's built in simple message broker. If you ever deploy this behind a load balancer across multiple server instances, messages sent from a user on Server A won't reach a staff member connected to Server B.
 
 ---
 
@@ -179,10 +179,10 @@ The app uses Spring's built-in simple message broker. If you ever deploy this be
 
 ### Short Term
 
-- **Server Sent Events for the Staff Dashboard:** Replace the 5-second poll loop with a passive SSE stream so the backend only pushes updates when something actually changes, bringing polling overhead to zero.
+- **Server Sent Events for the Staff Dashboard:** Replace the 5 second poll loop with a passive SSE stream so the backend only pushes updates when something actually changes, bringing polling overhead to zero.
 - **Database Indexing:** Add B-Tree indexes on `status`, `requestedAt`, and `assignedStaffId` to keep routing queries fast as the appointments table grows.
 
 ### Long-Term
 
 - **External Message Broker (RabbitMQ / ActiveMQ):** Swap out the in memory STOMP broker for an external message broker. This decouples message broadcasting from the app runtime and makes horizontal scaling behind a load balancer viable.
-- **Redis for Session Metrics:** Move volatile, non-persistent data (like `lastSeenAt` heartbeat timestamps and connection states) out of PostgreSQL and into a Redis cluster to reduce disk I/O and speed up reads/writes on frequently-updated fields.
+- **Redis for Session Metrics:** Move volatile, non-persistent data (like `lastSeenAt` heartbeat timestamps and connection states) out of PostgreSQL and into a Redis cluster to reduce disk I/O and speed up reads/writes on frequently updated fields.
