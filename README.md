@@ -33,6 +33,7 @@ To allow the system to send email notifications, your standard Gmail password wi
 2. Navigate to **Security** and select **2 Step Verification**.
 3. Scroll to the bottom and select **App passwords**.
 4. Generate an app password (e.g., name it "Appointment Chat System") and copy the 16 character code (no spaces).
+
 ---
  
 ## Installation & Setup
@@ -127,7 +128,23 @@ npm run dev
 ```
  
 The client will mount at [http://localhost:5173](http://localhost:5173).
- 
+
+### Step 5: Configure and Start the LiveKit Media Server
+
+The support chat engine relies on LiveKit (WebRTC orchestration) to power real-time voice and video capabilities directly beside the text interface.
+
+1. **Prerequisite:** Ensure **Docker Desktop** is installed, configured with WSL 2, and currently running on your host machine.
+2. **Configure Credentials:** Open `src/main/resources/application.properties` and add the matching development gateway keys at the bottom:
+```properties
+# LiveKit Local Development Gateway Credentials
+livekit.api.key=devkey
+livekit.api.secret=+z/iCLtSkUgomILOE/qBxHJLe/fvPjF3olDIp/FJyeo=
+   ```
+3. **Launch the Container:** Open a terminal window and execute the following command to download, bind, and boot the LiveKit server instance:
+```bash
+docker run --rm -p 7880:7880 -p 7881:7881 -p 7882:7882/udp -e LIVEKIT_KEYS="devkey: +z/iCLtSkUgomILOE/qBxHJLe/fvPjF3olDIp/FJyeo=" livekit/livekit-server --bind 0.0.0.0
+```
+
 ---
  
 ## Verifying Workflows & Simulating System Flows
@@ -139,7 +156,8 @@ To test the application across portals locally without data overlapping, use a *
 1. In your Incognito window, navigate to `http://localhost:5173/staff-dashboard` and click **Log In via Google**.
 2. Upon successful authentication, your status will show as `ONLINE_AVAILABLE` and state tracking begins.
 3. In your normal browser window, go to `http://localhost:5173/`, click **Request Appointment**, and fill in your details.
-4. The system will immediately link the structuresm, the user is connected, the staff dashboard shifts to `ONLINE_BUSY`, and the real-time chat interface mounts on both screens.
+4. The system will immediately link the structures, the user is connected, the staff dashboard shifts to `ONLINE_BUSY`, and the real-time chat interface mounts on both screens.
+
 ### 2. Simulating a Queue Timeout & Rejoin Flow
  
 1. Log out any active staff member or close the staff dashboard entirely.
@@ -149,9 +167,16 @@ To test the application across portals locally without data overlapping, use a *
 5. Once a staff member logs in and claims the ticket, the user automatically receives a notification email containing a token-secured recovery link (`/chat/user/{secureToken}`) to rejoin their session.
 
  **Note: At least one staff account must be present in the database for appointment requests to successfully go through.**
+
+### 3. Simulating Real Time Audio and Video Calls
+
+1. Connect a User and a Staff member into an active chat room using the standard FIFO flow.
+2. In the staff chat window, click the **"Join Video"** button.
+3. Grant the browser explicit permissions to access your webcam/microphone arrays.
+4. Once the media grid initializes, switch to the user chat window and click **"Join Video"** on that side. The WebRTC streams will negotiate automatically through the Docker proxy, displaying live streams.
  
 ---
  
-## 📄 Core Architecture Documentation
+## Core Architecture Documentation
  
 For an in-depth review of architectural decisions, database models, background scheduler algorithms, and concurrency race condition mitigations, please refer to the `ARCHITECTURE.md` blueprint document.
